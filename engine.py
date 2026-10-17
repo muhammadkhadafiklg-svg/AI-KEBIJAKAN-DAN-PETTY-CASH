@@ -102,7 +102,7 @@ def get_ai_chat_session(knowledge_base):
     """
     
     model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-1.5-flash-latest",
     system_instruction=system_instruction
 )
     return model.start_chat(history=[])
