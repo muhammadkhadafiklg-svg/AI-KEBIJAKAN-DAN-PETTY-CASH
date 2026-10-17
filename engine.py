@@ -102,9 +102,9 @@ def get_ai_chat_session(knowledge_base):
     """
     
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction=system_instruction
-    )
+    model_name="gemini-1.5-flash",
+    system_instruction=system_instruction
+)
     return model.start_chat(history=[])
 
 # Tarik data dari Google Sheets & mulai AI
