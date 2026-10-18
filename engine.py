@@ -8,6 +8,7 @@ import requests
 # ==========================================
 st.set_page_config(page_title="Asisten Petty Cash", page_icon="🤖", layout="wide")
 st.title("🤖 Asisten AI Petty Cash & COA")
+st.caption("Tanyakan aturan Petty Cash, kode COA, atau riwayat klaim di sini.")
 
 # ==========================================
 # 2. AUTENTIKASI API KEY
@@ -20,32 +21,7 @@ except KeyError:
     st.stop()
 
 # ==========================================
-# 3. DETEKSI MESIN OTOMATIS (MEMPERBAIKI ERROR 404)
-# ==========================================
-# Aplikasi akan mencari mesin yang tersedia khusus untuk API Key Anda
-nama_mesin_aktif = None
-try:
-    daftar_mesin = []
-    for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
-            nama_pendek = m.name.replace("models/", "")
-            daftar_mesin.append(nama_pendek)
-            
-    if daftar_mesin:
-        # Prioritaskan mesin flash jika ada, jika tidak, pakai mesin apa saja yang pertama kali muncul
-        nama_mesin_aktif = next((mesin for mesin in daftar_mesin if 'flash' in mesin), daftar_mesin[0])
-except Exception as e:
-    st.error(f"Gagal mengecek daftar server Google: {e}")
-    st.stop()
-
-if not nama_mesin_aktif:
-    st.error("🚨 Kunci API Anda tidak diizinkan mengakses mesin AI apa pun oleh Google. Anda WAJIB membuat Kunci API baru dan pilih opsi 'Create API key in New Project'.")
-    st.stop()
-else:
-    st.caption(f"✅ Berhasil terhubung ke server Google: **{nama_mesin_aktif}**")
-
-# ==========================================
-# 4. FUNGSI TARIK DATA (CSV)
+# 3. FUNGSI TARIK DATA (CSV)
 # ==========================================
 def buat_link_csv(url):
     if "/d/" in url and "/edit" in url:
@@ -55,13 +31,16 @@ def buat_link_csv(url):
 @st.cache_data(ttl=3600) 
 def tarik_data():
     try:
+        # Docs Aturan
         r = requests.get("https://docs.google.com/document/d/1mx8BqBj8FsTf0LIdkIXkrXb-DeLmGmt-_ndpdv99nto/export?format=txt")
         aturan = r.text if r.status_code == 200 else "Gagal baca aturan."
         
+        # Link Google Sheets
         l1 = buat_link_csv("https://docs.google.com/spreadsheets/d/1fjzpfQNVNmtMBJ9-ihmILOncZOsjJHhJv3uptZhQH6c/edit?usp=sharing")
         l2 = buat_link_csv("https://docs.google.com/spreadsheets/d/1jCvhYPqyTDJkpismwkPmz3z-wMDs2nE7xC0Doh4cEBI/edit?usp=sharing")
         l3 = buat_link_csv("https://docs.google.com/spreadsheets/d/1SmLN23EHaZOR-ujT9SJifnnFC4tkzIjo9o3KYmXBFD4/edit?usp=sharing")
         
+        # Tarik data (dibatasi 300 baris agar memori AI stabil)
         d1 = pd.read_csv(l1).head(300).to_string(index=False) if l1 else ""
         d2 = pd.read_csv(l2).head(300).to_string(index=False) if l2 else ""
         d3 = pd.read_csv(l3).head(300).to_string(index=False) if l3 else ""
@@ -72,7 +51,7 @@ def tarik_data():
 data_aturan, sheet_1, sheet_2, sheet_3 = tarik_data()
 
 # ==========================================
-# 5. INSTRUKSI & MODEL AI
+# 4. INSTRUKSI & MODEL AI (SUDAH DIKUNCI KE VERSI TERBARU)
 # ==========================================
 instruksi = f"""
 Anda adalah Asisten AI untuk membantu kasir toko mengidentifikasi kode COA dan aturan klaim Petty Cash.
@@ -80,14 +59,14 @@ Anda adalah Asisten AI untuk membantu kasir toko mengidentifikasi kode COA dan a
 2. KAMUS:\n{sheet_1}\n
 3. MASTER 1:\n{sheet_2}\n
 4. MASTER 2:\n{sheet_3}\n
-Jawab ringkas dan langsung pada intinya.
+Jawab ringkas, ramah, dan langsung pada intinya.
 """
 
-# Gunakan mesin yang berhasil terdeteksi di Langkah 3
-model = genai.GenerativeModel(model_name=nama_mesin_aktif, system_instruction=instruksi)
+# Menggunakan model spesifik yang diminta oleh server Google
+model = genai.GenerativeModel(model_name="gemini-3.8-flash", system_instruction=instruksi)
 
 # ==========================================
-# 6. ANTARMUKA OBROLAN
+# 5. ANTARMUKA OBROLAN
 # ==========================================
 if "messages" not in st.session_state:
     st.session_state.messages = []
