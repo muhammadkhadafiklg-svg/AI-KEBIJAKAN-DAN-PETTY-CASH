@@ -110,7 +110,7 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # ==========================================
-# 6. LOGIK PENCARIAN & DESAIN DAFTAR (ANTI-UNNAMED)
+# 6. LOGIK PENCARIAN & DESAIN DAFTAR (ANTI-UNNAMED & ANTI-ERROR)
 # ==========================================
 if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
     with st.chat_message("user", avatar="👤"):
@@ -126,9 +126,11 @@ if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
             if df.empty: return ""
             
             keywords = keyword.split()
-            mask = pd.Series([True] * len(df))
+            mask = pd.Series([True] * len(df), index=df.index)
+            
             for k in keywords:
-                mask = mask & df.apply(lambda row: row.astype(str).str.lower().str.contains(k).any(), axis=1)
+                # PERBAIKAN BUG PYARROW: Menggunakan pencarian teks Python asli yang jauh lebih aman
+                mask = mask & df.apply(lambda row: k in " ".join(row.astype(str)).lower(), axis=1)
                 
             hasil = df[mask]
             
@@ -143,19 +145,16 @@ if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
                     for col in kolom:
                         val = str(row[col]).replace("\n", " ").strip()
                         
-                        # Filter data kosong
                         if val and val.lower() != "nan" and val != "-":
-                            # FILTER ANTI-UNNAMED
                             if "unnamed" in str(col).lower():
-                                teks += f"   ▪️ {val}\n"  # Sembunyikan judul kolom, tampilkan isinya saja
+                                teks += f"   ▪️ {val}\n"  
                             else:
-                                teks += f"   ▪️ **{col}:** {val}\n" # Tampilkan normal
+                                teks += f"   ▪️ **{col}:** {val}\n" 
                     teks += "\n---\n\n"
                     
                 return teks
             return ""
 
-        # Cari di ketiga Google Sheet
         hasil_1 = rangkai_kartu(df1, "Kamus COA")
         hasil_2 = rangkai_kartu(df2, "Master Data 1")
         hasil_3 = rangkai_kartu(df3, "Master Data 2")
@@ -165,7 +164,6 @@ if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
             jawaban_bot += hasil_1 + hasil_2 + hasil_3
             ditemukan = True
             
-        # Cari di Google Docs (Aturan Naratif)
         if keyword in data_aturan.lower():
             kalimat_aturan = [baris.strip() for baris in data_aturan.split('\n') if keyword in baris.lower()]
             if kalimat_aturan:
