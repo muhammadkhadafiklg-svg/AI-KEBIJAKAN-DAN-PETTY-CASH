@@ -6,18 +6,13 @@ import requests
 # ==========================================
 # 1. PENGATURAN HALAMAN & DESAIN MINIMALIS
 # ==========================================
-# Layout diubah menjadi "centered" agar kolom chat lebih fokus dan nyaman dibaca
 st.set_page_config(page_title="Petty Cash AI", page_icon="✨", layout="centered")
 
-# CSS Kustom untuk mempercantik UI (Menyembunyikan menu, membulatkan tombol)
 st.markdown("""
     <style>
-        /* Sembunyikan elemen bawaan Streamlit */
         #MainMenu {visibility: hidden;}
         header {visibility: hidden;}
         footer {visibility: hidden;}
-        
-        /* Desain tombol obrolan baru */
         .stButton>button {
             border-radius: 8px;
             font-weight: 600;
@@ -31,8 +26,6 @@ st.markdown("""
             color: #0056b3;
             box-shadow: 0px 4px 10px rgba(0,0,0,0.05);
         }
-        
-        /* Jarak untuk input chat */
         .stChatInputContainer {
             padding-bottom: 20px;
         }
@@ -43,7 +36,6 @@ st.markdown("""
 # 2. SIDEBAR (PANEL SAMPING PROFESIONAL)
 # ==========================================
 with st.sidebar:
-    # Logo dan Nama Aplikasi
     st.markdown("""
         <div style="text-align: center; margin-bottom: 20px;">
             <img src="https://cdn-icons-png.flaticon.com/512/2942/2942813.png" width="70" style="margin-bottom: 10px;">
@@ -52,7 +44,7 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
-    st.info("💡 **Tips:**\nKetikkan nama barang atau transaksi secara spesifik (misal: *'beli materai'*, *'bayar listrik'*).")
+    st.info("💡 **Tips:**\nKetikkan nama barang secara spesifik (misal: *'beli materai'*, *'bayar listrik'*). Jangan mengirim pesan terlalu cepat beruntun.")
     
     st.divider()
     
@@ -62,7 +54,6 @@ with st.sidebar:
         
     st.divider()
     
-    # Profil Pembuat (Tampilan ID Card Korporat)
     st.markdown("""
         <div style="text-align: center; margin-top: 40px; padding: 15px; background-color: #f8f9fa; border-radius: 10px; border: 1px solid #eeeeee;">
             <p style="font-size: 11px; color: #888888; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Developed By</p>
@@ -72,12 +63,12 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. HEADER UTAMA (BANNER BERSIH)
+# 3. HEADER UTAMA
 # ==========================================
 st.markdown("""
     <div style="background-color: #f4f7f6; padding: 20px 25px; border-radius: 12px; margin-bottom: 30px; border-left: 5px solid #0056b3;">
         <h3 style="margin: 0; color: #1a1a1a; font-size: 24px;">✨ AI Petty Cash & COA</h3>
-        <p style="margin: 8px 0 0 0; color: #555555; font-size: 15px;">Dapatkan panduan kode COA dan validasi aturan klaim perusahaan secara instan.</p>
+        <p style="margin: 8px 0 0 0; color: #555555; font-size: 15px;">Dapatkan panduan kode COA dan aturan klaim secara instan.</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -92,7 +83,7 @@ except KeyError:
     st.stop()
 
 # ==========================================
-# 5. FUNGSI TARIK DATA (CSV)
+# 5. FUNGSI TARIK DATA (OPTIMASI HEMAT TOKEN)
 # ==========================================
 def buat_link_csv(url):
     if "/d/" in url and "/edit" in url:
@@ -109,9 +100,10 @@ def tarik_data():
         l2 = buat_link_csv("https://docs.google.com/spreadsheets/d/1jCvhYPqyTDJkpismwkPmz3z-wMDs2nE7xC0Doh4cEBI/edit?usp=sharing")
         l3 = buat_link_csv("https://docs.google.com/spreadsheets/d/1SmLN23EHaZOR-ujT9SJifnnFC4tkzIjo9o3KYmXBFD4/edit?usp=sharing")
         
-        d1 = pd.read_csv(l1).head(300).to_string(index=False) if l1 else ""
-        d2 = pd.read_csv(l2).head(300).to_string(index=False) if l2 else ""
-        d3 = pd.read_csv(l3).head(300).to_string(index=False) if l3 else ""
+        # Menggunakan to_csv() dan membuang baris kosong (dropna) untuk menghemat 80% kuota token Google
+        d1 = pd.read_csv(l1).dropna(how='all').head(300).to_csv(index=False) if l1 else ""
+        d2 = pd.read_csv(l2).dropna(how='all').head(300).to_csv(index=False) if l2 else ""
+        d3 = pd.read_csv(l3).dropna(how='all').head(300).to_csv(index=False) if l3 else ""
         return aturan, d1, d2, d3
     except Exception:
         return "", "", "", ""
@@ -122,13 +114,13 @@ data_aturan, sheet_1, sheet_2, sheet_3 = tarik_data()
 # 6. INSTRUKSI & MODEL AI
 # ==========================================
 instruksi = f"""
-Anda adalah Asisten AI profesional yang bertugas membantu tim operasional toko mengidentifikasi kode COA dan aturan klaim Petty Cash.
+Anda adalah Asisten AI untuk membantu operasional toko mengidentifikasi COA dan aturan Petty Cash.
 REFERENSI DATA:
-1. ATURAN PETTY CASH:\n{data_aturan}\n
-2. KAMUS KLAIM:\n{sheet_1}\n
-3. MASTER COA 1:\n{sheet_2}\n
-4. MASTER COA 2:\n{sheet_3}\n
-Jawab dengan ramah, rapi, dan langsung pada intinya. Gunakan format tabel jika diperlukan agar mudah dibaca kasir.
+1. ATURAN:\n{data_aturan}\n
+2. KAMUS:\n{sheet_1}\n
+3. MASTER 1:\n{sheet_2}\n
+4. MASTER 2:\n{sheet_3}\n
+Jawab dengan ramah, rapi, gunakan tabel jika perlu, dan langsung pada intinya.
 """
 
 model = genai.GenerativeModel(model_name="gemini-3.8-flash", system_instruction=instruksi)
@@ -142,7 +134,6 @@ if "messages" not in st.session_state:
     ]
 
 for msg in st.session_state.messages:
-    # Menggunakan ikon simpel dan bersih untuk chat
     ikon = "👤" if msg["role"] == "user" else "✨"
     with st.chat_message(msg["role"], avatar=ikon):
         st.markdown(msg["content"])
@@ -160,4 +151,7 @@ if prompt := st.chat_input("Ketikkan pencarian Anda di sini..."):
             tunggu.markdown(respon.text)
             st.session_state.messages.append({"role": "model", "content": respon.text})
         except Exception as e:
-            tunggu.error(f"Koneksi terganggu: {e}")
+            if "429" in str(e):
+                tunggu.error("Tunggu sebentar ya, Anda bertanya terlalu cepat. Silakan tunggu 1 menit lalu coba lagi.")
+            else:
+                tunggu.error(f"Koneksi terganggu: {e}")
