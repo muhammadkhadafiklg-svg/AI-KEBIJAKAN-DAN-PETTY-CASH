@@ -50,8 +50,7 @@ def tarik_data_database():
         csv_2 = buat_link_csv(link_sheet_2)
         csv_3 = buat_link_csv(link_sheet_3)
 
-        # Membaca data menggunakan Pandas
-        # Kita potong sebagian saja (head) jika datanya terlalu panjang agar tidak error kelebihan limit AI
+        # Membaca data menggunakan Pandas (maksimal 200 baris agar tidak berat)
         data_sheet_1 = pd.read_csv(csv_1).head(200).to_string(index=False) if csv_1 else "Data Sheet 1 Kosong"
         data_sheet_2 = pd.read_csv(csv_2).head(200).to_string(index=False) if csv_2 else "Data Sheet 2 Kosong"
         data_sheet_3 = pd.read_csv(csv_3).head(200).to_string(index=False) if csv_3 else "Data Sheet 3 Kosong"
@@ -111,9 +110,9 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # ==========================================
-# 6. LOGIK TANYA JAWAB
+# 6. LOGIK TANYA JAWAB (SUDAH DIPERBAIKI := )
 # ==========================================
-if prompt = st.chat_input("Ketik pertanyaan kasir di sini (misal: 'COA untuk beli galon?')..."):
+if prompt := st.chat_input("Ketik pertanyaan kasir di sini (misal: 'COA untuk beli galon?')..."):
     
     # Tampilkan pertanyaan kasir
     with st.chat_message("user"):
