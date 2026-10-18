@@ -101,8 +101,8 @@ def get_ai_chat_session(knowledge_base):
     5. Selalu ingatkan aturan penting (misal: nota harus print, aturan IT, dll) jika relevan dengan pertanyaan.
     """
     
-    model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+   model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash-latest", 
     system_instruction=system_instruction
 )
     return model.start_chat(history=[])
