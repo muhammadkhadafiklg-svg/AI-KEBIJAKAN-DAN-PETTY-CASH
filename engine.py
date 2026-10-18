@@ -123,4 +123,26 @@ if prompt := st.chat_input("Tulis pesan di sini..."):
         hasil_2 = rangkai_kalimat(df2, "Master Data 1")
         hasil_3 = rangkai_kalimat(df3, "Master Data 2")
         
-        if hasil_1 or hasil_2 or hasil
+        # BARIS YANG DIPERBAIKI (TIDAK TERPOTONG)
+        if hasil_1 or hasil_2 or hasil_3:
+            jawaban_bot += "Berikut adalah data yang saya temukan untuk Anda:\n"
+            jawaban_bot += hasil_1 + hasil_2 + hasil_3
+            ditemukan = True
+            
+        # Cari di Google Docs (Naratif)
+        if keyword in data_aturan.lower():
+            # Cari kalimat/paragraf yang mengandung keyword
+            kalimat_aturan = [baris.strip() for baris in data_aturan.split('\n') if keyword in baris.lower()]
+            if kalimat_aturan:
+                jawaban_bot += "\n**Terkait Kebijakan Operasional:**\n"
+                for k in kalimat_aturan[:3]: # Ambil 3 baris relevan
+                    jawaban_bot += f"📌 *\"{k}\"*\n"
+                ditemukan = True
+
+        # Jika tidak ada sama sekali
+        if not ditemukan:
+            jawaban_bot = f"Maaf, saya tidak dapat menemukan informasi terkait '{prompt}' di dalam sistem data operasional saat ini."
+            
+        # Tampilkan jawaban bot
+        st.markdown(jawaban_bot)
+        st.session_state.messages.append({"role": "model", "content": jawaban_bot})
