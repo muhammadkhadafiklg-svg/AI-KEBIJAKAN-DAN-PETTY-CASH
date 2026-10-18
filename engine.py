@@ -104,17 +104,15 @@ if "messages" not in st.session_state:
         {"role": "model", "content": "Halo! Saya Asisten Finance M Khadafi Zainal. Apa yang ingin Anda cari hari ini? (Ketik nama transaksi atau barang)"}
     ]
 
-# Tampilkan riwayat chat
 for msg in st.session_state.messages:
     ikon = "👤" if msg["role"] == "user" else "✨"
     with st.chat_message(msg["role"], avatar=ikon):
         st.markdown(msg["content"])
 
 # ==========================================
-# 6. LOGIK PENCARIAN & PEMBUATAN TABEL
+# 6. LOGIK PENCARIAN & DESAIN DAFTAR (KARTU)
 # ==========================================
 if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
-    # Tampilkan chat user
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -124,8 +122,7 @@ if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
         jawaban_bot = ""
         ditemukan = False
         
-        # Fungsi untuk merangkai baris Google Sheet menjadi Tabel Markdown
-        def rangkai_tabel(df, nama_sumber):
+        def rangkai_kartu(df, nama_sumber):
             if df.empty: return ""
             
             # Pencarian Multi-Kata
@@ -137,50 +134,46 @@ if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
             hasil = df[mask]
             
             if not hasil.empty:
-                # Menampilkan hingga 15 alternatif
                 hasil = hasil.head(15) 
                 kolom = list(hasil.columns)
                 
-                teks = f"\n**📂 Ditemukan {len(hasil)} kecocokan di {nama_sumber}:**\n\n"
+                # Header untuk sumber sheet
+                teks = f"### 📂 {nama_sumber} ({len(hasil)} Kecocokan)\n\n"
                 
-                # Buat Header Tabel
-                teks += "| " + " | ".join(kolom) + " |\n"
-                teks += "|" + "|".join(["---"] * len(kolom)) + "|\n"
-                
-                # Buat Isi Tabel
-                for index, row in hasil.iterrows():
-                    baris = []
+                # Menjadikan baris data sebagai daftar yang mudah dibaca
+                for i, (_, row) in enumerate(hasil.iterrows(), 1):
+                    teks += f"🔹 **Pilihan {i}**\n"
                     for col in kolom:
                         val = str(row[col]).replace("\n", " ").strip()
-                        baris.append(val if val else "-")
-                    teks += "| " + " | ".join(baris) + " |\n"
+                        # Hanya tampilkan baris yang ada isinya (tidak kosong atau nan)
+                        if val and val.lower() != "nan" and val != "-":
+                            teks += f"- **{col}:** {val}\n"
+                    teks += "\n---\n\n"  # Garis pembatas antar pilihan
                     
-                return teks + "\n"
+                return teks
             return ""
 
         # Cari di ketiga Google Sheet
-        hasil_1 = rangkai_tabel(df1, "Kamus COA")
-        hasil_2 = rangkai_tabel(df2, "Master Data 1")
-        hasil_3 = rangkai_tabel(df3, "Master Data 2")
+        hasil_1 = rangkai_kartu(df1, "Kamus COA")
+        hasil_2 = rangkai_kartu(df2, "Master Data 1")
+        hasil_3 = rangkai_kartu(df3, "Master Data 2")
         
         if hasil_1 or hasil_2 or hasil_3:
-            jawaban_bot += "Berikut adalah hasil pencarian dan alternatifnya:\n"
+            jawaban_bot += "Berikut adalah hasil pencarian yang sudah dirapikan agar mudah dibandingkan:\n\n"
             jawaban_bot += hasil_1 + hasil_2 + hasil_3
             ditemukan = True
             
-        # Cari di Google Docs (Naratif)
+        # Cari di Google Docs (Aturan Naratif)
         if keyword in data_aturan.lower():
             kalimat_aturan = [baris.strip() for baris in data_aturan.split('\n') if keyword in baris.lower()]
             if kalimat_aturan:
-                jawaban_bot += "\n**Terkait Kebijakan Operasional:**\n"
-                for k in kalimat_aturan[:3]: # Ambil 3 baris relevan
-                    jawaban_bot += f"📌 *\"{k}\"*\n"
+                jawaban_bot += "### 📜 Kebijakan Operasional Terkait:\n"
+                for k in kalimat_aturan[:3]: 
+                    jawaban_bot += f"> *\"{k}\"*\n\n"
                 ditemukan = True
 
-        # Jika tidak ada hasil
         if not ditemukan:
             jawaban_bot = f"Maaf, saya tidak dapat menemukan informasi terkait '{prompt}'. Coba gunakan kata kunci yang lebih umum (misal: Bensin, Solar, atau Transport)."
             
-        # Tampilkan jawaban
         st.markdown(jawaban_bot)
         st.session_state.messages.append({"role": "model", "content": jawaban_bot})
