@@ -110,7 +110,7 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # ==========================================
-# 6. LOGIK PENCARIAN & DESAIN DAFTAR (KARTU)
+# 6. LOGIK PENCARIAN & DESAIN DAFTAR (ANTI-UNNAMED)
 # ==========================================
 if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
     with st.chat_message("user", avatar="👤"):
@@ -125,7 +125,6 @@ if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
         def rangkai_kartu(df, nama_sumber):
             if df.empty: return ""
             
-            # Pencarian Multi-Kata
             keywords = keyword.split()
             mask = pd.Series([True] * len(df))
             for k in keywords:
@@ -137,18 +136,21 @@ if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
                 hasil = hasil.head(15) 
                 kolom = list(hasil.columns)
                 
-                # Header untuk sumber sheet
                 teks = f"### 📂 {nama_sumber} ({len(hasil)} Kecocokan)\n\n"
                 
-                # Menjadikan baris data sebagai daftar yang mudah dibaca
                 for i, (_, row) in enumerate(hasil.iterrows(), 1):
                     teks += f"🔹 **Pilihan {i}**\n"
                     for col in kolom:
                         val = str(row[col]).replace("\n", " ").strip()
-                        # Hanya tampilkan baris yang ada isinya (tidak kosong atau nan)
+                        
+                        # Filter data kosong
                         if val and val.lower() != "nan" and val != "-":
-                            teks += f"- **{col}:** {val}\n"
-                    teks += "\n---\n\n"  # Garis pembatas antar pilihan
+                            # FILTER ANTI-UNNAMED
+                            if "unnamed" in str(col).lower():
+                                teks += f"   ▪️ {val}\n"  # Sembunyikan judul kolom, tampilkan isinya saja
+                            else:
+                                teks += f"   ▪️ **{col}:** {val}\n" # Tampilkan normal
+                    teks += "\n---\n\n"
                     
                 return teks
             return ""
@@ -159,7 +161,7 @@ if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
         hasil_3 = rangkai_kartu(df3, "Master Data 2")
         
         if hasil_1 or hasil_2 or hasil_3:
-            jawaban_bot += "Berikut adalah hasil pencarian yang sudah dirapikan agar mudah dibandingkan:\n\n"
+            jawaban_bot += "Berikut adalah hasil pencarian yang sudah dirapikan:\n\n"
             jawaban_bot += hasil_1 + hasil_2 + hasil_3
             ditemukan = True
             
