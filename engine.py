@@ -4,44 +4,82 @@ import pandas as pd
 import requests
 
 # ==========================================
-# 1. PENGATURAN HALAMAN & CSS KUSTOM
+# 1. PENGATURAN HALAMAN & DESAIN MINIMALIS
 # ==========================================
-st.set_page_config(page_title="Petty Cash AI", page_icon="💼", layout="wide")
+# Layout diubah menjadi "centered" agar kolom chat lebih fokus dan nyaman dibaca
+st.set_page_config(page_title="Petty Cash AI", page_icon="✨", layout="centered")
 
-# Menyembunyikan menu bawaan Streamlit agar terlihat lebih profesional
+# CSS Kustom untuk mempercantik UI (Menyembunyikan menu, membulatkan tombol)
 st.markdown("""
     <style>
+        /* Sembunyikan elemen bawaan Streamlit */
         #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
         header {visibility: hidden;}
-        .stChatInput {padding-bottom: 20px;}
+        footer {visibility: hidden;}
+        
+        /* Desain tombol obrolan baru */
+        .stButton>button {
+            border-radius: 8px;
+            font-weight: 600;
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            color: #333333;
+            transition: all 0.3s ease;
+        }
+        .stButton>button:hover {
+            border-color: #0056b3;
+            color: #0056b3;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.05);
+        }
+        
+        /* Jarak untuk input chat */
+        .stChatInputContainer {
+            padding-bottom: 20px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. SIDEBAR (PANEL SAMPING)
+# 2. SIDEBAR (PANEL SAMPING PROFESIONAL)
 # ==========================================
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/4744/4744315.png", width=100) # Ikon keuangan/buku
-    st.title("💼 Info Sistem")
-    st.info("Aplikasi AI ini dirancang khusus untuk mempercepat pencarian kode COA dan Aturan Klaim Petty Cash bagi kasir toko.")
+    # Logo dan Nama Aplikasi
+    st.markdown("""
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img src="https://cdn-icons-png.flaticon.com/512/2942/2942813.png" width="70" style="margin-bottom: 10px;">
+            <h2 style="margin: 0; color: #1E1E1E; font-size: 22px;">Finance AI</h2>
+            <p style="color: #666666; font-size: 13px;">Sistem Asisten Petty Cash</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("💡 **Tips:**\nKetikkan nama barang atau transaksi secara spesifik (misal: *'beli materai'*, *'bayar listrik'*).")
     
     st.divider()
     
-    if st.button("🔄 Mulai Obrolan Baru", use_container_width=True):
+    if st.button("🔄 Bersihkan Obrolan", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
         
     st.divider()
-    st.markdown("👨‍💻 **Dibuat oleh:**")
-    st.markdown("### M Khadafi Zainal")
-    st.caption("*( Finance Representative )*")
+    
+    # Profil Pembuat (Tampilan ID Card Korporat)
+    st.markdown("""
+        <div style="text-align: center; margin-top: 40px; padding: 15px; background-color: #f8f9fa; border-radius: 10px; border: 1px solid #eeeeee;">
+            <p style="font-size: 11px; color: #888888; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Developed By</p>
+            <p style="font-size: 16px; font-weight: bold; color: #2c3e50; margin: 5px 0 2px 0;">M Khadafi Zainal</p>
+            <p style="font-size: 12px; font-weight: 600; color: #0056b3; margin: 0;">Finance Representative</p>
+        </div>
+    """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. HEADER UTAMA
+# 3. HEADER UTAMA (BANNER BERSIH)
 # ==========================================
-st.title("🤖 AI Assistant Petty Cash")
-st.markdown("---")
+st.markdown("""
+    <div style="background-color: #f4f7f6; padding: 20px 25px; border-radius: 12px; margin-bottom: 30px; border-left: 5px solid #0056b3;">
+        <h3 style="margin: 0; color: #1a1a1a; font-size: 24px;">✨ AI Petty Cash & COA</h3>
+        <p style="margin: 8px 0 0 0; color: #555555; font-size: 15px;">Dapatkan panduan kode COA dan validasi aturan klaim perusahaan secara instan.</p>
+    </div>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 4. AUTENTIKASI API KEY
@@ -84,13 +122,13 @@ data_aturan, sheet_1, sheet_2, sheet_3 = tarik_data()
 # 6. INSTRUKSI & MODEL AI
 # ==========================================
 instruksi = f"""
-Anda adalah Asisten AI profesional yang bertugas membantu kasir toko mengidentifikasi kode COA dan aturan klaim Petty Cash.
+Anda adalah Asisten AI profesional yang bertugas membantu tim operasional toko mengidentifikasi kode COA dan aturan klaim Petty Cash.
 REFERENSI DATA:
 1. ATURAN PETTY CASH:\n{data_aturan}\n
 2. KAMUS KLAIM:\n{sheet_1}\n
 3. MASTER COA 1:\n{sheet_2}\n
 4. MASTER COA 2:\n{sheet_3}\n
-Jawab dengan ramah, rapi, dan langsung pada intinya. Gunakan tabel jika diperlukan untuk menyajikan data agar mudah dibaca kasir.
+Jawab dengan ramah, rapi, dan langsung pada intinya. Gunakan format tabel jika diperlukan agar mudah dibaca kasir.
 """
 
 model = genai.GenerativeModel(model_name="gemini-3.8-flash", system_instruction=instruksi)
@@ -99,29 +137,27 @@ model = genai.GenerativeModel(model_name="gemini-3.8-flash", system_instruction=
 # 7. ANTARMUKA OBROLAN
 # ==========================================
 if "messages" not in st.session_state:
-    # Memberikan pesan sambutan otomatis dari AI
     st.session_state.messages = [
-        {"role": "model", "content": "Halo! Saya adalah Asisten AI Petty Cash Anda. Silakan ketikkan nama barang atau transaksi (contoh: *'beli galon'*, *'service AC'*), dan saya akan mencarikan aturan serta kode COA-nya untuk Anda."}
+        {"role": "model", "content": "Halo! Saya siap membantu pencatatan *Petty Cash* Anda hari ini. Transaksi apa yang ingin Anda cari kode COA-nya?"}
     ]
 
-# Render isi chat dengan Avatar
 for msg in st.session_state.messages:
-    ikon = "🧑‍💼" if msg["role"] == "user" else "🤖"
+    # Menggunakan ikon simpel dan bersih untuk chat
+    ikon = "👤" if msg["role"] == "user" else "✨"
     with st.chat_message(msg["role"], avatar=ikon):
         st.markdown(msg["content"])
 
-# Kolom Input Chat
-if prompt := st.chat_input("Ketikkan barang atau transaksi di sini..."):
-    with st.chat_message("user", avatar="🧑‍💼"):
+if prompt := st.chat_input("Ketikkan pencarian Anda di sini..."):
+    with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    with st.chat_message("model", avatar="🤖"):
+    with st.chat_message("model", avatar="✨"):
         tunggu = st.empty()
-        tunggu.markdown("⏳ *Mencari di database perusahaan...*")
+        tunggu.markdown("⏳ *Memindai database kebijakan perusahaan...*")
         try:
             respon = model.generate_content(prompt)
             tunggu.markdown(respon.text)
             st.session_state.messages.append({"role": "model", "content": respon.text})
         except Exception as e:
-            tunggu.error(f"Terjadi kesalahan pada server AI: {e}")
+            tunggu.error(f"Koneksi terganggu: {e}")
