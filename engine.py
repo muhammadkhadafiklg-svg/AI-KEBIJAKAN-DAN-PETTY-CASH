@@ -44,7 +44,7 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
-    st.info("💡 **Tips Hemat Kuota:**\nKetik langsung intinya (misal: *'COA galon'*). Gunakan tombol bersihkan obrolan jika ingin me-reset.")
+    st.info("💡 **Informasi Sistem:**\nDatabase membaca seluruh baris data secara cerdas menggunakan pencarian otomatis.")
     
     st.divider()
     
@@ -83,7 +83,7 @@ except KeyError:
     st.stop()
 
 # ==========================================
-# 5. FUNGSI TARIK DATA (SUPER OPTIMASI TOKEN)
+# 5. FUNGSI TARIK DATA (PENCARIAN CERDAS PANDAS)
 # ==========================================
 def buat_link_csv(url):
     if "/d/" in url and "/edit" in url:
@@ -91,7 +91,7 @@ def buat_link_csv(url):
     return None
 
 @st.cache_data(ttl=3600) 
-def tarik_data():
+def tarik_data_mentah():
     try:
         r = requests.get("https://docs.google.com/document/d/1mx8BqBj8FsTf0LIdkIXkrXb-DeLmGmt-_ndpdv99nto/export?format=txt")
         aturan = r.text.strip() if r.status_code == 200 else "Gagal baca aturan."
@@ -100,52 +100,37 @@ def tarik_data():
         l2 = buat_link_csv("https://docs.google.com/spreadsheets/d/1jCvhYPqyTDJkpismwkPmz3z-wMDs2nE7xC0Doh4cEBI/edit?usp=sharing")
         l3 = buat_link_csv("https://docs.google.com/spreadsheets/d/1SmLN23EHaZOR-ujT9SJifnnFC4tkzIjo9o3KYmXBFD4/edit?usp=sharing")
         
-        # PROSES PEMBERSIHAN DATA (MENGHEMAT RIBUAN TOKEN)
-        def proses_csv(link):
-            if not link: return ""
-            df = pd.read_csv(link)
-            df = df.dropna(how='all') # Hapus baris yang kosong semua
-            df = df.dropna(axis=1, how='all') # Hapus kolom yang kosong semua
-            df = df.fillna("") # Ganti teks 'NaN' menjadi kosong agar token tidak boros
-            return df.head(400).to_csv(index=False)
-            
-        d1 = proses_csv(l1)
-        d2 = proses_csv(l2)
-        d3 = proses_csv(l3)
+        df1 = pd.read_csv(l1).dropna(how='all').dropna(axis=1, how='all').fillna("") if l1 else pd.DataFrame()
+        df2 = pd.read_csv(l2).dropna(how='all').dropna(axis=1, how='all').fillna("") if l2 else pd.DataFrame()
+        df3 = pd.read_csv(l3).dropna(how='all').dropna(axis=1, how='all').fillna("") if l3 else pd.DataFrame()
         
-        return aturan, d1, d2, d3
+        return aturan, df1, df2, df3
     except Exception:
-        return "", "", "", ""
+        return "", pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-data_aturan, sheet_1, sheet_2, sheet_3 = tarik_data()
+data_aturan, df1, df2, df3 = tarik_data_mentah()
 
 # ==========================================
-# 6. INSTRUKSI & MODEL AI (AKURASI TINGGI & PERSONA)
+# 6. INISIALISASI MODEL AI (PERSONA)
 # ==========================================
-instruksi = f"""
+instruksi_dasar = f"""
 IDENTITAS ANDA:
 Jika pengguna bertanya "kamu siapa", "siapa namamu", "siapa anda", atau tentang identitas Anda, Anda WAJIB menjawab persis dengan kalimat ini:
 "Aku adalah AI asisten M Khadafi Zainal yang akan membantu permasalahan Anda yang berhubungan dengan Accounting Operational."
 
 TUGAS UTAMA:
 Anda adalah Asisten AI untuk membantu operasional toko mengidentifikasi COA dan aturan Petty Cash.
+- Jawab SANGAT SINGKAT, rapi, dan langsung ke inti jawaban.
+- HANYA gunakan data referensi yang diberikan di bawah ini. Dilarang keras mengarang kode COA.
+- Jika data tidak ditemukan, katakan: "Maaf, data tersebut tidak ditemukan di sistem."
 
-SANGAT PENTING:
-- Jawab SANGAT SINGKAT, rapi, dan langsung ke inti jawaban untuk menghemat token memori.
-- HANYA gunakan data dari referensi di bawah ini untuk menjawab. Dilarang keras mengarang kode COA atau memanipulasi aturan.
-- Jika data yang ditanyakan tidak ditemukan di dalam referensi, katakan: "Maaf, data tersebut tidak ditemukan di sistem."
-
-REFERENSI DATA:
-ATURAN:\n{data_aturan}\n
-KAMUS:\n{sheet_1}\n
-MASTER 1:\n{sheet_2}\n
-MASTER 2:\n{sheet_3}\n
+ATURAN PERUSAHAAN:\n{data_aturan}
 """
 
-model = genai.GenerativeModel(model_name="gemini-3.8-flash", system_instruction=instruksi)
+model = genai.GenerativeModel(model_name="gemini-3.8-flash", system_instruction=instruksi_dasar)
 
 # ==========================================
-# 7. ANTARMUKA OBROLAN
+# 7. ANTARMUKA OBROLAN & PENCARIAN DINAMIS
 # ==========================================
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -157,20 +142,56 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"], avatar=ikon):
         st.markdown(msg["content"])
 
-if prompt := st.chat_input("Ketikkan pencarian Anda di sini..."):
+if prompt := st.chat_input("Ketikkan pencarian Anda di sini (misal: nama barang atau transaksi)..."):
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
     
     with st.chat_message("model", avatar="✨"):
         tunggu = st.empty()
-        tunggu.markdown("⏳ *Memindai database kebijakan...*")
+        tunggu.markdown("⏳ *Memindai ribuan baris database...*")
+        
         try:
-            respon = model.generate_content(prompt)
-            tunggu.markdown(respon.text)
-            st.session_state.messages.append({"role": "model", "content": respon.text})
+            # FUNGSI PENCARIAN CERDAS (PANDAS FILTERING)
+            # Mencari baris di Google Sheet yang mengandung kata kunci dari pertanyaan kasir
+            keyword = prompt.lower()
+            
+            def cari_data_relevan(df):
+                if df.empty: return ""
+                # Mengubah seluruh dataframe menjadi string lowercase untuk dicari kecocokannya
+                mask = df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword).any(), axis=1)
+                hasil_filter = df[mask]
+                if not hasil_filter.empty:
+                    # Ambil maksimal 15 baris yang paling cocok untuk dikirim ke AI
+                    return hasil_filter.head(15).to_csv(index=False)
+                return ""
+
+            s1_relevan = cari_data_relevan(df1)
+            s2_relevan = cari_data_relevan(df2)
+            s3_relevan = cari_data_relevan(df3)
+            
+            # Jika kata kunci tidak ditemukan lewat pencarian, ambil sampel teratas sebagai cadangan
+            if not s1_relevan and not s2_relevan and not s3_relevan:
+                s1_relevan = df1.head(20).to_csv(index=False)
+                s2_relevan = df2.head(20).to_csv(index=False)
+                s3_relevan = df3.head(20).to_csv(index=False)
+
+            # Susun konteks khusus untuk pertanyaan ini saja
+            konteks_dinamis = f"""
+            DATA KAMUS 1 (HASIL PENCARIAN):\n{s1_relevan}
+            DATA MASTER 1 (HASIL PENCARIAN):\n{s2_relevan}
+            DATA MASTER 2 (HASIL PENCARIAN):\n{s3_relevan}
+            """
+            
+            # Kirim pertanyaan beserta data spesifik yang sudah difilter ke AI
+            chat_session = model.start_chat(history=[])
+            respon_lengkap = chat_session.send_message(f"{konteks_dinamis}\n\nPertanyaan Kasir: {prompt}")
+            
+            tunggu.markdown(respon_lengkap.text)
+            st.session_state.messages.append({"role": "model", "content": respon_lengkap.text})
+            
         except Exception as e:
             if "429" in str(e):
-                tunggu.error("Batas limit akses tercapai. Mohon tunggu 1 menit lalu coba lagi.")
+                tunggu.error("⚠️ Batas limit kuota per menit tercapai. Mohon tunggu sekitar 1 menit lalu coba ketik ulang.")
             else:
                 tunggu.error(f"Koneksi terganggu: {e}")
