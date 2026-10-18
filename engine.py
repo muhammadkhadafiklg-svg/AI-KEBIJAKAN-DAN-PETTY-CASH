@@ -13,6 +13,19 @@ st.markdown("""
         header {visibility: hidden;}
         footer {visibility: hidden;}
         .stChatInputContainer { padding-bottom: 20px; }
+        .stButton>button {
+            border-radius: 8px;
+            font-weight: 600;
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            color: #333333;
+            transition: all 0.3s ease;
+        }
+        .stButton>button:hover {
+            border-color: #0056b3;
+            color: #0056b3;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.05);
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -27,11 +40,23 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
-    st.info("💡 **Tips:** Ketik nama barang/transaksi (misal: *ATK, Galon, Tol*). Sistem akan membalas otomatis tanpa batas limit API.")
+    st.info("💡 **Tips Pencarian:**\nKetik kata kunci lebih dari satu untuk hasil spesifik. (Contoh: *BBM Mobil* atau *Sewa Gedung*).")
+    
+    st.divider()
     
     if st.button("🔄 Bersihkan Obrolan", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
+        
+    st.divider()
+    
+    st.markdown("""
+        <div style="text-align: center; margin-top: 40px; padding: 15px; background-color: #f8f9fa; border-radius: 10px; border: 1px solid #eeeeee;">
+            <p style="font-size: 11px; color: #888888; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Developed By</p>
+            <p style="font-size: 16px; font-weight: bold; color: #2c3e50; margin: 5px 0 2px 0;">M Khadafi Zainal</p>
+            <p style="font-size: 12px; font-weight: 600; color: #0056b3; margin: 0;">Finance Representative</p>
+        </div>
+    """, unsafe_allow_html=True)
 
 # ==========================================
 # 3. HEADER UTAMA
@@ -39,6 +64,7 @@ with st.sidebar:
 st.markdown("""
     <div style="background-color: #f4f7f6; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-left: 5px solid #0056b3;">
         <h3 style="margin: 0; color: #1a1a1a; font-size: 22px;">✨ Chat Operasional Petty Cash</h3>
+        <p style="margin: 5px 0 0 0; color: #555; font-size: 14px;">Sistem pencarian cerdas berbasis data langsung.</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -85,53 +111,65 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # ==========================================
-# 6. LOGIK "AI SIMULASI" (UBAH DATA JADI KALIMAT)
+# 6. LOGIK PENCARIAN & PEMBUATAN TABEL
 # ==========================================
-if prompt := st.chat_input("Tulis pesan di sini..."):
+if prompt := st.chat_input("Tulis kata kunci pencarian di sini..."):
     # Tampilkan chat user
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
     
     with st.chat_message("model", avatar="✨"):
-        keyword = prompt.lower()
+        keyword = prompt.lower().strip()
         jawaban_bot = ""
         ditemukan = False
         
-        # Fungsi untuk merangkai baris Google Sheet menjadi kalimat peluru (Bullet Points)
-        def rangkai_kalimat(df, nama_sumber):
+        # Fungsi untuk merangkai baris Google Sheet menjadi Tabel Markdown
+        def rangkai_tabel(df, nama_sumber):
             if df.empty: return ""
-            mask = df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword).any(), axis=1)
+            
+            # Pencarian Multi-Kata
+            keywords = keyword.split()
+            mask = pd.Series([True] * len(df))
+            for k in keywords:
+                mask = mask & df.apply(lambda row: row.astype(str).str.lower().str.contains(k).any(), axis=1)
+                
             hasil = df[mask]
             
             if not hasil.empty:
-                # Ambil maksimal 5 hasil agar tidak terlalu panjang di chat
-                hasil = hasil.head(5)
-                teks = f"\n**Dari {nama_sumber}:**\n"
+                # Menampilkan hingga 15 alternatif
+                hasil = hasil.head(15) 
+                kolom = list(hasil.columns)
+                
+                teks = f"\n**📂 Ditemukan {len(hasil)} kecocokan di {nama_sumber}:**\n\n"
+                
+                # Buat Header Tabel
+                teks += "| " + " | ".join(kolom) + " |\n"
+                teks += "|" + "|".join(["---"] * len(kolom)) + "|\n"
+                
+                # Buat Isi Tabel
                 for index, row in hasil.iterrows():
-                    detail = []
-                    for col in df.columns:
-                        val = str(row[col]).strip()
-                        if val:  # Jika kolom ada isinya
-                            detail.append(f"**{col}:** {val}")
-                    teks += "✅ " + " | ".join(detail) + "\n"
-                return teks
+                    baris = []
+                    for col in kolom:
+                        val = str(row[col]).replace("\n", " ").strip()
+                        baris.append(val if val else "-")
+                    teks += "| " + " | ".join(baris) + " |\n"
+                    
+                return teks + "\n"
             return ""
 
         # Cari di ketiga Google Sheet
-        hasil_1 = rangkai_kalimat(df1, "Kamus COA")
-        hasil_2 = rangkai_kalimat(df2, "Master Data 1")
-        hasil_3 = rangkai_kalimat(df3, "Master Data 2")
+        hasil_1 = rangkai_tabel(df1, "Kamus COA")
+        hasil_2 = rangkai_tabel(df2, "Master Data 1")
+        hasil_3 = rangkai_tabel(df3, "Master Data 2")
         
-        # BARIS YANG DIPERBAIKI (TIDAK TERPOTONG)
         if hasil_1 or hasil_2 or hasil_3:
-            jawaban_bot += "Berikut adalah data yang saya temukan untuk Anda:\n"
+            jawaban_bot += "Berikut adalah hasil pencarian dan alternatifnya:\n"
             jawaban_bot += hasil_1 + hasil_2 + hasil_3
             ditemukan = True
             
         # Cari di Google Docs (Naratif)
         if keyword in data_aturan.lower():
-            # Cari kalimat/paragraf yang mengandung keyword
             kalimat_aturan = [baris.strip() for baris in data_aturan.split('\n') if keyword in baris.lower()]
             if kalimat_aturan:
                 jawaban_bot += "\n**Terkait Kebijakan Operasional:**\n"
@@ -139,10 +177,10 @@ if prompt := st.chat_input("Tulis pesan di sini..."):
                     jawaban_bot += f"📌 *\"{k}\"*\n"
                 ditemukan = True
 
-        # Jika tidak ada sama sekali
+        # Jika tidak ada hasil
         if not ditemukan:
-            jawaban_bot = f"Maaf, saya tidak dapat menemukan informasi terkait '{prompt}' di dalam sistem data operasional saat ini."
+            jawaban_bot = f"Maaf, saya tidak dapat menemukan informasi terkait '{prompt}'. Coba gunakan kata kunci yang lebih umum (misal: Bensin, Solar, atau Transport)."
             
-        # Tampilkan jawaban bot
+        # Tampilkan jawaban
         st.markdown(jawaban_bot)
         st.session_state.messages.append({"role": "model", "content": jawaban_bot})
